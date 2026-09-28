@@ -1,0 +1,2 @@
+{"_id":{"$oid":"668667d51176b827f341e4b1"},"firstName":"Fedora","lastName":"","email":"fed.jkg827@gmail.com","password":"$2b$12$j3xoPoOvo8tpB6Hg/7ecsOLFmUKV.y2FmPnEY9fKb7yFDid117Sr6","verified":false,"isFinanceUser":true,"__v":0}
+{"_id":{"$oid":"66866a871176b827f341e4d9"},"firstName":"Benedict","lastName":"Jikong","email":"benedict.jikong@joptimanconsultancy.com","password":"$2b$12$5aW8LSGBwurheTNlrg40n.HqqRVFchsdC.wgYfhl3YpNw.ZzBjqb2","verified":false,"isFinanceUser":true,"__v":0}
