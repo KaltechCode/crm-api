@@ -34,11 +34,11 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ message: "Welcome to the  JOPTIMAN API " });
+  res.json({ message: "Welcome to the  JOPTIMAN CRM API " });
 });
 
 app.get("/api", (req, res) => {
-  res.json({ message: "Welcome to the JOPTIMAN API" });
+  res.json({ message: "Welcome to the JOPTIMAN CRM API" });
 });
 
 module.exports = app;
