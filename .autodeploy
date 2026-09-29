@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+echo "Starting deployment..."
+
+npm install
+
+echo "Restarting Express server..."
+
+pm2 restart Crm-joptiman-api --update-env
+
+pm2 save
+
+echo "Deployment completed successfully."
