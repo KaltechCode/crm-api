@@ -324,5 +324,5 @@ const policiesSchema = mongoose.Schema(
 
     }
 )
-const Policies = mongoose.model("Policies", policiesSchema)
-module.exports = Policies
+const { createModel } = require("../store");
+module.exports = createModel("policies");

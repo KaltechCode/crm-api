@@ -107,5 +107,5 @@ const agentModel = new mongoose.Schema(
 
   }
 );
-const Agent = mongoose.model("Agent", agentModel);
-module.exports = Agent; 
+const { createModel } = require("../store");
+module.exports = createModel("agents"); 

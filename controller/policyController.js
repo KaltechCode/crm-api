@@ -1,11 +1,13 @@
-const Admin = require('../models/AdminSchema')
-const Agent = require('../models/AgentSchema')
-const Policies = require('../models/PoliciesSchema')
-const Statements = require('../models/StatementSchema')
-const Notification = require('../models/NotificationSchema')
-const Commission = require('../models/Commission')
-const Statement = require('../models/StatementSchema')
-// const { MongoClient, ISODate } = require('mongodb');
+const {
+    listDocs,
+    findDoc,
+    findDocById,
+    updateDoc,
+    updateMatchingDoc,
+    deleteDoc,
+    insertDoc,
+    saveDoc,
+} = require("../store");
 
 exports.addNewPolicy = async (req, res) => {
     try {
@@ -55,7 +57,7 @@ exports.addNewPolicy = async (req, res) => {
                 )
                 : 1).toFixed(2);
 
-            const agent = await Agent.findOne({ agentCode: agentCode })
+            const agent = await findDoc("agents", { agentCode: agentCode })
 
 
             if (agent) {
@@ -64,7 +66,7 @@ exports.addNewPolicy = async (req, res) => {
                 agentLastName = agent.lastName;
 
                 if (recruitingAgentCode) {
-                    const recruitingAgent = await Agent.findOne({ agentCode: recruitingAgentCode })
+                    const recruitingAgent = await findDoc("agents", { agentCode: recruitingAgentCode })
                     if (recruitingAgent !== "") {
                         overwrittingAgentFirstName1 = recruitingAgent.firstName,
                             overwrittingAgentLastName1 = recruitingAgent.lastName,
@@ -76,7 +78,7 @@ exports.addNewPolicy = async (req, res) => {
                     let recruitingAgentCode2 = recruitingAgent.recruitingAgentCode
 
                     if (recruitingAgentCode2) {
-                        const recruitingAgent2 = await Agent.findOne({ agentCode: recruitingAgentCode2 })
+                        const recruitingAgent2 = await findDoc("agents", { agentCode: recruitingAgentCode2 })
                         if (recruitingAgent2 !== "") {
                             overwrittingAgentFirstName2 = recruitingAgent2.firstName,
                                 overwrittingAgentLastName2 = recruitingAgent2.lastName,
@@ -89,7 +91,7 @@ exports.addNewPolicy = async (req, res) => {
 
             }
 
-            const newPolicy = new Policies({
+            const newPolicy = await insertDoc("policies", {
                 policyRegistrationId: generatePolicyRegistrationId(8),
                 isApproved: false,
                 policySubmissionDate,
@@ -134,16 +136,14 @@ exports.addNewPolicy = async (req, res) => {
                 splitPercentage: splitPercentage,
             })
 
-            newPolicy.save()
 
-            const newNotification = new Notification({
+            const newNotification = await insertDoc("notifications", {
                 source: 'Agent',
                 newPolicy: true,
                 agentCode: agentCode,
                 message: `${agentFirstName} ${agentLastName} added new ${policyType} policy ${policyNumber} on ${policySubmissionDate}`,
                 policyNumber: policyNumber,
             })
-            newNotification.save()
 
 
             if (newPolicy && newNotification) {
@@ -185,7 +185,7 @@ exports.getAllPolicies = async (req, res) => {
             };
         }
 
-        let allPolicies = await Policies.find(query).sort({ policySubmissionDate: -1 });
+        let allPolicies = await listDocs("policies", query, { policySubmissionDate: -1 });
 
         // Convert policySubmissionDate to Date objects and sort by date in descending order
         allPolicies = allPolicies.sort((a, b) => {
@@ -207,7 +207,7 @@ exports.getPolicyByID = async (req, res) => {
     try {
         const policyID = req.params._id;
 
-        const policy = await Policies.findById(policyID);
+        const policy = await findDocById("policies", policyID);
 
         if (!policy) {
             return res.status(404).send({ "message": "Policy not found" });
@@ -327,13 +327,13 @@ exports.approvePolicy = async (req, res) => {
 
             //Split1 OW finding
             if (split1_AgentCode) {
-                const split1_Agent = await Agent.findOne({ agentCode: split1_AgentCode })
+                const split1_Agent = await findDoc("agents", { agentCode: split1_AgentCode })
 
                 if (split1_Agent) {
                     let recruitingAgentCode = split1_Agent.recruitingAgentCode
 
                     if (recruitingAgentCode) {
-                        const recruitingAgent = await Agent.findOne({ agentCode: recruitingAgentCode })
+                        const recruitingAgent = await findDoc("agents", { agentCode: recruitingAgentCode })
 
                         if (recruitingAgent !== "") {
                             split_1_OWAgent1_FirstName = recruitingAgent.firstName,
@@ -345,7 +345,7 @@ exports.approvePolicy = async (req, res) => {
                         let recruitingAgentCode2 = recruitingAgent.recruitingAgentCode
 
                         if (recruitingAgentCode2) {
-                            const recruitingAgent2 = await Agent.findOne({ agentCode: recruitingAgentCode2 })
+                            const recruitingAgent2 = await findDoc("agents", { agentCode: recruitingAgentCode2 })
 
 
                             if (recruitingAgent2 !== "" || recruitingAgent2 !== null || recruitingAgent2 !== undefined) {
@@ -362,13 +362,13 @@ exports.approvePolicy = async (req, res) => {
 
             //Split2  OW finding
             if (split2_AgentCode) {
-                const split2_Agent = await Agent.findOne({ agentCode: split2_AgentCode })
+                const split2_Agent = await findDoc("agents", { agentCode: split2_AgentCode })
 
                 if (split2_Agent) {
                     recruitingAgentCode = split2_Agent.recruitingAgentCode
 
                     if (recruitingAgentCode) {
-                        const recruitingAgent = await Agent.findOne({ agentCode: recruitingAgentCode })
+                        const recruitingAgent = await findDoc("agents", { agentCode: recruitingAgentCode })
 
                         if (recruitingAgent !== "") {
                             split_2_OWAgent1_FirstName = recruitingAgent.firstName,
@@ -381,7 +381,7 @@ exports.approvePolicy = async (req, res) => {
 
                         let recruitingAgentCode2 = recruitingAgent.recruitingAgentCode
 
-                        const recruitingAgent2 = await Agent.findOne({ agentCode: recruitingAgentCode2 })
+                        const recruitingAgent2 = await findDoc("agents", { agentCode: recruitingAgentCode2 })
 
                         if (recruitingAgent2 !== "") {
                             split_2_OWAgent2_FirstName = recruitingAgent2.firstName,
@@ -604,7 +604,7 @@ exports.approvePolicy = async (req, res) => {
                     : 0)
                 : 0
 
-            const policy = await Policies.findByIdAndUpdate(id,
+            const policy = await updateDoc("policies", id,
                 {
                     $set: {
                         isApproved: true,
@@ -702,7 +702,7 @@ exports.approvePolicy = async (req, res) => {
                     upsert: true
                 })
 
-            const commission = new Commission({
+            const commission = await insertDoc("commissions", {
                 isApproved: true,
                 policySubmissionDate: policySubmissionDate,
                 policyRegistrationID: policyRegistrationID,
@@ -802,15 +802,13 @@ exports.approvePolicy = async (req, res) => {
                     )
                     : 1,
             })
-            commission.save()
 
-            const newNotification = new Notification({
+            const newNotification = await insertDoc("notifications", {
                 source: 'Admin',
                 agentCode: agentCode,
                 message: `${policyCarrier} has approved policy ${policyNumber} on ${policyApprovalDate}.`,
                 policyNumber: policyNumber,
             })
-            newNotification.save();
 
             if (policy &&
                 commission &&
@@ -835,7 +833,7 @@ exports.rejectPolicy = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const policy = await Policies.findByIdAndDelete(id)
+        const policy = await deleteDoc("policies", id)
 
         if (policy) {
             res.status(200).send({ message: "Policy Rejected Successfully" })
@@ -869,7 +867,7 @@ exports.getAllCommissions = async (req, res) => {
             };
         }
 
-        let allCommissions = await Commission.find(query);
+        let allCommissions = await listDocs("commissions", query);
 
         allCommissions = allCommissions.sort((a, b) => {
             const dateA = new Date(a.policyApprovalDate);
@@ -976,7 +974,7 @@ exports.getCommissionById = async (req, res) => {
     try {
         const id = req.params._id
 
-        const commission = await Commission.findById({ _id: id })
+        const commission = await findDocById("commissions", { _id: id })
 
         if (commission) {
             res.status(200).send(commission)
@@ -992,7 +990,7 @@ exports.deleteCommission = async (req, res) => {
         const commissionId = req.params._id.split(',');
 
         for (const _id of commissionId) {
-            const deletedCommission = await Commission.findByIdAndDelete(_id);
+            const deletedCommission = await deleteDoc("commissions", _id);
 
             if (!deletedCommission) {
                 return res.status(404).json({ message: `Commission with ID ${_id} not found` });
@@ -1067,7 +1065,7 @@ exports.isPaid = async (req, res) => {
         let date = new Date();
         let formattedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
 
-        // const policy = await Policies.findByIdAndUpdate(id,
+        // const policy = await updateDoc("policies", id,
         //     {
         //         $set: {
         //             isPaid: true,
@@ -1079,7 +1077,7 @@ exports.isPaid = async (req, res) => {
         //     }
         // )
 
-        const commission = await Commission.findByIdAndUpdate(id,
+        const commission = await updateDoc("commissions", id,
             {
                 $set: {
                     isPaid: true,
@@ -1090,18 +1088,18 @@ exports.isPaid = async (req, res) => {
 
             }
         )
-        const policy = await Policies.findOne({ policyNumber: policyNumber })
+        const policy = await findDoc("policies", { policyNumber: policyNumber })
 
         if (policy) {
             policy.isPaid = true
             // policy.paidOutDate = formattedDate
             policy.paidOutDate = paidOutDate
 
-            await policy.save()
+            await saveDoc(policy)
         }
 
         if (agentCommission !== 0) {
-            const agent = await Agent.findOneAndUpdate(
+            const agent = await updateMatchingDoc("agents", 
                 { agentCode: agentCode },
                 { $inc: { commissionEarned: agentCommission } },
                 {
@@ -1111,7 +1109,7 @@ exports.isPaid = async (req, res) => {
             );
 
 
-            const agentStatement = new Statement({
+            const agentStatement = await insertDoc("statements", {
                 // paidOutDate: formattedDate,
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
@@ -1128,13 +1126,12 @@ exports.isPaid = async (req, res) => {
                 splitPercentage: splitPercentage,
 
             })
-            agentStatement.save()
 
 
         }
 
         if (split1_agentCommission !== 0) {
-            const split1_agent = await Agent.findOneAndUpdate(
+            const split1_agent = await updateMatchingDoc("agents", 
                 { agentCode: split1_AgentCode },
                 { $inc: { commissionEarned: split1_agentCommission } },
                 {
@@ -1143,7 +1140,7 @@ exports.isPaid = async (req, res) => {
                 }
             )
 
-            const split1_agent_Statement = new Statement({
+            const split1_agent_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1164,11 +1161,10 @@ exports.isPaid = async (req, res) => {
                 splitPercentage: splitPercentage,
 
             })
-            split1_agent_Statement.save()
         }
 
         if (split2_agentCommission !== 0) {
-            const split2_agent = await Agent.findOneAndUpdate(
+            const split2_agent = await updateMatchingDoc("agents", 
                 { agentCode: split2_AgentCode },
                 { $inc: { commissionEarned: split2_agentCommission } },
                 {
@@ -1177,7 +1173,7 @@ exports.isPaid = async (req, res) => {
                 }
             )
 
-            const split2_agent_Statement = new Statement({
+            const split2_agent_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1197,12 +1193,11 @@ exports.isPaid = async (req, res) => {
                 split2_agentCommission: split2_agentCommission,
                 splitPercentage: splitPercentage,
             })
-            split2_agent_Statement.save()
 
         }
 
         if (overwrittingAgentCommission1 !== 0) {
-            const OW_agent1 = await Agent.findOneAndUpdate(
+            const OW_agent1 = await updateMatchingDoc("agents", 
                 { agentCode: overwrittingAgentCode1 },
                 { $inc: { commissionEarned: overwrittingAgentCommission1 } },
                 {
@@ -1211,7 +1206,7 @@ exports.isPaid = async (req, res) => {
                 }
             )
 
-            const OW_Agent1_Statement = new Statement({
+            const OW_Agent1_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1232,12 +1227,11 @@ exports.isPaid = async (req, res) => {
                 overwrittingAgentCommission1: overwrittingAgentCommission1,
                 splitPercentage: splitPercentage,
             })
-            OW_Agent1_Statement.save()
 
         }
 
         if (overwrittingAgentCommission2 !== 0) {
-            const OW_agent2 = await Agent.findOneAndUpdate(
+            const OW_agent2 = await updateMatchingDoc("agents", 
                 { agentCode: overwrittingAgentCode2 },
                 { $inc: { commissionEarned: overwrittingAgentCommission2 } },
                 {
@@ -1245,7 +1239,7 @@ exports.isPaid = async (req, res) => {
 
                 }
             )
-            const OW_Agent2_Statement = new Statement({
+            const OW_Agent2_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1263,13 +1257,12 @@ exports.isPaid = async (req, res) => {
                 overwrittingAgentCommission2: overwrittingAgentCommission2,
                 splitPercentage: splitPercentage,
             })
-            OW_Agent2_Statement.save()
 
 
         }
 
         if (split_1_OWAgent1_Commission !== 0) {
-            const split_1_OWAgent1 = await Agent.findOneAndUpdate(
+            const split_1_OWAgent1 = await updateMatchingDoc("agents", 
                 { agentCode: split_1_OWAgent1_AgentCode },
                 { $inc: { commissionEarned: split_1_OWAgent1_Commission } },
                 {
@@ -1278,7 +1271,7 @@ exports.isPaid = async (req, res) => {
                 }
             )
 
-            const split1_OW_Agent1_Statement = new Statement({
+            const split1_OW_Agent1_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1298,13 +1291,12 @@ exports.isPaid = async (req, res) => {
                 split_1_OWAgent1_Commission: split_1_OWAgent1_Commission,
                 splitPercentage: splitPercentage,
             })
-            split1_OW_Agent1_Statement.save()
 
         }
 
 
         if (split_1_OWAgent2_Commission !== 0) {
-            const split_1_OWAgent2 = await Agent.findOneAndUpdate(
+            const split_1_OWAgent2 = await updateMatchingDoc("agents", 
                 { agentCode: split_1_OWAgent2_AgentCode },
                 { $inc: { commissionEarned: split_1_OWAgent2_Commission } },
                 {
@@ -1313,7 +1305,7 @@ exports.isPaid = async (req, res) => {
                 }
             )
 
-            const split1_OW_Agent2_Statement = new Statement({
+            const split1_OW_Agent2_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1333,12 +1325,11 @@ exports.isPaid = async (req, res) => {
                 split_1_OWAgent2_Commission: split_1_OWAgent2_Commission,
                 splitPercentage: splitPercentage,
             })
-            split1_OW_Agent2_Statement.save()
 
         }
 
         if (split_2_OWAgent1_Commission !== 0) {
-            const split_2_OWAgent1 = await Agent.findOneAndUpdate(
+            const split_2_OWAgent1 = await updateMatchingDoc("agents", 
                 { agentCode: split_2_OWAgent1_AgentCode },
                 { $inc: { commissionEarned: split_2_OWAgent1_Commission } },
                 {
@@ -1347,7 +1338,7 @@ exports.isPaid = async (req, res) => {
                 }
             )
 
-            const split2_OW_Agent1_Statement = new Statement({
+            const split2_OW_Agent1_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1367,13 +1358,12 @@ exports.isPaid = async (req, res) => {
                 split_2_OWAgent1_Commission: split_2_OWAgent1_Commission,
                 splitPercentage: splitPercentage,
             })
-            split2_OW_Agent1_Statement.save()
         }
 
 
 
         if (split_2_OWAgent2_Commission !== 0) {
-            const split_2_OWAgent2 = await Agent.findOneAndUpdate(
+            const split_2_OWAgent2 = await updateMatchingDoc("agents", 
                 { agentCode: split_2_OWAgent2_AgentCode },
                 { $inc: { commissionEarned: split_2_OWAgent2_Commission } },
                 {
@@ -1382,7 +1372,7 @@ exports.isPaid = async (req, res) => {
                 }
             )
 
-            const split2_OW_Agent2_Statement = new Statement({
+            const split2_OW_Agent2_Statement = await insertDoc("statements", {
                 isPaidOut: true,
                 paidOutDate: paidOutDate,
                 policyCarrier: policyCarrier,
@@ -1400,21 +1390,19 @@ exports.isPaid = async (req, res) => {
                 split_2_OWAgent2_Commission: split_2_OWAgent2_Commission,
                 splitPercentage: splitPercentage,
             })
-            split2_OW_Agent2_Statement.save()
 
         }
 
 
 
 
-        const newNotification = new Notification({
+        const newNotification = await insertDoc("notifications", {
             source: 'Admin',
             agentCode: agentCode,
             // message: `${policyCarrier} has paid a commission percentage for ${policyType} policy ${policyNumber} on ${formattedDate}.`,
             message: `${policyCarrier} has paid a commission percentage for ${policyType} policy ${policyNumber} on ${paidOutDate}.`,
             policyNumber: policyNumber,
         })
-        newNotification.save();
 
 
         if (policy && commission && newNotification) {
@@ -1464,7 +1452,7 @@ exports.statement = async (req, res) => {
                     const startYear = start.getFullYear()
                     const endYear = end.getFullYear()
 
-                    let allStatements = await Statements.find({
+                    let allStatements = await listDocs("statements", {
                         $and: [
                             query,
                             {
@@ -1513,7 +1501,7 @@ exports.statement = async (req, res) => {
 
                     let statements=[];
 
-                    let allStatements = await Statements.find({
+                    let allStatements = await listDocs("statements", {
                         $and: [
                             { paidOutDate: { $gte: startDate} },
                             { paidOutDate: { $lte: endDate } },
@@ -1548,7 +1536,7 @@ exports.statement = async (req, res) => {
             }
             else {
                 if (req.query.search) {
-                    let allStatements = await Statements.find(query)
+                    let allStatements = await listDocs("statements", query)
 
                     allStatements = allStatements.sort((a, b) => {
                         const dateA = new Date(a.paidOutDate);
@@ -1563,7 +1551,7 @@ exports.statement = async (req, res) => {
                     }
                 }
                 else {
-                    let allStatements = await Statements.find()
+                    let allStatements = await listDocs("statements")
 
                     allStatements = allStatements.sort((a, b) => {
                         const dateA = new Date(a.paidOutDate);
@@ -1591,7 +1579,7 @@ exports.getStatementByID = async (req, res) => {
     try {
         const statementID = req.params._id;
 
-        const statement = await Statements.findById(statementID);
+        const statement = await findDocById("statements", statementID);
 
         if (!statement) {
             return res.status(404).send({ "message": "Statement not found" });
@@ -1610,7 +1598,7 @@ exports.updateStatement = async (req, res) => {
         const id = req.params.id
         const { status } = req.body
 
-        const statement = await Statement.findByIdAndUpdate(id,
+        const statement = await updateDoc("statements", id,
             {
                 $set: {
                     status: status
@@ -1666,7 +1654,7 @@ exports.chargedBack = async (req, res) => {
         let formattedChargedBackDate = `${chargedBackDate.getDate()}/${chargedBackDate.getMonth() + 1}/${chargedBackDate.getFullYear()}`;
 
 
-        const commission = await Commission.findByIdAndUpdate(id,
+        const commission = await updateDoc("commissions", id,
             {
                 $set: {
                     isChargedBack: true,
@@ -1679,7 +1667,7 @@ exports.chargedBack = async (req, res) => {
         )
 
         if (agentCommission !== 0) {
-            const agent = await Agent.findOneAndUpdate(
+            const agent = await updateMatchingDoc("agents", 
                 { agentCode: agentCode },
                 { $inc: { commissionEarned: -agentCommission } },
                 {
@@ -1688,7 +1676,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { agentCommission: -agentCommission } },
                 {
@@ -1698,7 +1686,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (split1_agentCommission !== 0) {
-            const split1_agent = await Agent.findOneAndUpdate(
+            const split1_agent = await updateMatchingDoc("agents", 
                 { agentCode: split1_AgentCode },
                 { $inc: { commissionEarned: -split1_agentCommission } },
                 {
@@ -1707,7 +1695,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { split2_agentCommission: -split1_agentCommission } },
                 {
@@ -1717,7 +1705,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (split2_agentCommission !== 0) {
-            const split2_agent = await Agent.findOneAndUpdate(
+            const split2_agent = await updateMatchingDoc("agents", 
                 { agentCode: split2_AgentCode },
                 { $inc: { commissionEarned: -split2_agentCommission } },
                 {
@@ -1726,7 +1714,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { split2_agentCommission: -split2_agentCommission } },
                 {
@@ -1736,7 +1724,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (overwrittingAgentCommission1 !== 0) {
-            const OW_agent1 = await Agent.findOneAndUpdate(
+            const OW_agent1 = await updateMatchingDoc("agents", 
                 { agentCode: overwrittingAgentCode1 },
                 { $inc: { commissionEarned: -overwrittingAgentCommission1 } },
                 {
@@ -1745,7 +1733,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { overwrittingAgentCommission1: -overwrittingAgentCommission1 } },
                 {
@@ -1755,7 +1743,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (overwrittingAgentCommission2 !== 0) {
-            const OW_agent2 = await Agent.findOneAndUpdate(
+            const OW_agent2 = await updateMatchingDoc("agents", 
                 { agentCode: overwrittingAgentCode2 },
                 { $inc: { commissionEarned: -overwrittingAgentCommission2 } },
                 {
@@ -1764,7 +1752,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { overwrittingAgentCommission2: -overwrittingAgentCommission2 } },
                 {
@@ -1774,7 +1762,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (split_1_OWAgent1_Commission !== 0) {
-            const split_1_OWAgent1 = await Agent.findOneAndUpdate(
+            const split_1_OWAgent1 = await updateMatchingDoc("agents", 
                 { agentCode: split_1_OWAgent1_AgentCode },
                 { $inc: { commissionEarned: -split_1_OWAgent1_Commission } },
                 {
@@ -1783,7 +1771,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { split_1_OWAgent1_Commission: -split_1_OWAgent1_Commission } },
                 {
@@ -1793,7 +1781,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (split_1_OWAgent2_Commission !== 0) {
-            const split_1_OWAgent2 = await Agent.findOneAndUpdate(
+            const split_1_OWAgent2 = await updateMatchingDoc("agents", 
                 { agentCode: split_1_OWAgent2_AgentCode },
                 { $inc: { commissionEarned: -split_1_OWAgent2_Commission } },
                 {
@@ -1802,7 +1790,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { split_1_OWAgent2_Commission: -split_1_OWAgent2_Commission } },
                 {
@@ -1812,7 +1800,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (split_2_OWAgent1_Commission !== 0) {
-            const split_2_OWAgent1 = await Agent.findOneAndUpdate(
+            const split_2_OWAgent1 = await updateMatchingDoc("agents", 
                 { agentCode: split_2_OWAgent1_AgentCode },
                 { $inc: { commissionEarned: -split_2_OWAgent1_Commission } },
                 {
@@ -1821,7 +1809,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { split_2_OWAgent1_Commission: -split_2_OWAgent1_Commission } },
                 {
@@ -1831,7 +1819,7 @@ exports.chargedBack = async (req, res) => {
         }
 
         if (split_2_OWAgent2_Commission !== 0) {
-            const split_2_OWAgent2 = await Agent.findOneAndUpdate(
+            const split_2_OWAgent2 = await updateMatchingDoc("agents", 
                 { agentCode: split_2_OWAgent2_AgentCode },
                 { $inc: { commissionEarned: -split_2_OWAgent2_Commission } },
                 {
@@ -1840,7 +1828,7 @@ exports.chargedBack = async (req, res) => {
                 }
             )
 
-            const policy = await Policies.findOneAndUpdate(
+            const policy = await updateMatchingDoc("policies", 
                 { policyNumber: policyNumber },
                 { $inc: { split_2_OWAgent2_Commission: -split_2_OWAgent2_Commission } },
                 {
@@ -1849,13 +1837,12 @@ exports.chargedBack = async (req, res) => {
             )
         }
 
-        const newNotification = new Notification({
+        const newNotification = await insertDoc("notifications", {
             source: 'Admin',
             agentCode: agentCode,
             message: `${policyCarrier} has posted a commission charge back for ${policyType} policy ${policyNumber} on ${formattedChargedBackDate}.`,
             policyNumber: policyNumber,
         })
-        newNotification.save();
 
         if (commission && newNotification) {
             res.status(200).send({ "message": "Commission Charged Back Successfully", data: commission })
@@ -1870,7 +1857,7 @@ exports.getPolicyByPolicyNumber = async (req, res) => {
     try {
         const policyNumber = req.params.policyNumber
 
-        const policy = await Policies.findOne({ policyNumber: policyNumber })
+        const policy = await findDoc("policies", { policyNumber: policyNumber })
 
         if (policy) {
             res.status(200).send(policy)
@@ -1909,7 +1896,7 @@ exports.getAllCommissions_AgentView = async (req, res) => {
         }
 
         if (req.query.search) {
-            const allCommissions = await Commission.find({
+            const allCommissions = await listDocs("commissions", {
                 $and: [
                     {
                         $or: [
@@ -2021,7 +2008,7 @@ exports.getAllCommissions_AgentView = async (req, res) => {
             }
         }
         else {
-            let allCommissions = await Commission.find({
+            let allCommissions = await listDocs("commissions", {
                 $or: [
                     { agentCode: userId },
                     { overwrittingAgentCode1: userId },
@@ -2155,7 +2142,7 @@ exports.getAllPolicies_AgentView = async (req, res) => {
         }
 
         if (req.query.search) {
-            let allPolicies = await Policies.find({
+            let allPolicies = await listDocs("policies", {
                 $and: [
                     query,
                     {
@@ -2264,7 +2251,7 @@ exports.getAllPolicies_AgentView = async (req, res) => {
             }
         }
         else {
-            let allPolicies = await Policies.find({
+            let allPolicies = await listDocs("policies", {
                 $or: [
                     { agentCode: agentCode },
                     { overwrittingAgentCode1: agentCode },
@@ -2395,7 +2382,7 @@ exports.statement_AgentView = async (req, res) => {
 
         if (startDate, endDate) {
             if (req.query.search) {
-                let allStatements = await Statements.find({
+                let allStatements = await listDocs("statements", {
                     $and: [
                         {
                             $or: [
@@ -2427,7 +2414,7 @@ exports.statement_AgentView = async (req, res) => {
                 });
             }
             else {
-                let allStatements = await Statements.find({
+                let allStatements = await listDocs("statements", {
                     $or: [
                         { agentCode: agentCode },
                         { overwrittingAgentCode1: agentCode },
@@ -2456,7 +2443,7 @@ exports.statement_AgentView = async (req, res) => {
         }
         else {
             if (req.query.search) {
-                let allStatements = await Statements.find({
+                let allStatements = await listDocs("statements", {
                     $and: [
                         {
                             $or: [
@@ -2486,7 +2473,7 @@ exports.statement_AgentView = async (req, res) => {
                 });
             }
             else {
-                let allStatements = await Statements.find(
+                let allStatements = await listDocs("statements", 
                     {
                         $or: [
                             { agentCode: agentCode },

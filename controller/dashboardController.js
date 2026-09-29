@@ -1,10 +1,10 @@
-const Policies = require('../models/PoliciesSchema');
-const Agent = require('../models/AgentSchema')
+const { findAgents, findOneByAgentCode } = require("../rowMap")
+const { listDocs, findDoc } = require("../store")
 
 
 exports.getMonthlyPolicyData = async (req, res) => {
   try {
-    const policies = await Policies.find({ isPaid: true });
+    const policies = await listDocs("policies", { isPaid: true });
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const requestedMonth = req.params.month;
@@ -58,7 +58,7 @@ exports.getMonthlyPolicyData = async (req, res) => {
 exports.getYearlyMonthlyPolicyData = async (req, res) => {
   try {
     // Retrieve policies from the database
-    const policies = await Policies.find();
+    const policies = await listDocs("policies");
     const requestedYear = parseInt(req.params.year);
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
     const currentMonthKey = `${requestedYear}-${currentMonth}`
@@ -182,7 +182,7 @@ exports.getDetailsOfHighestCommissionedAgent = async (req, res) => {
     // }
 
 
-    const policies = await Policies.find();
+    const policies = await listDocs("policies");
 
 
     let highestCommission = 0;
@@ -202,7 +202,7 @@ exports.getDetailsOfHighestCommissionedAgent = async (req, res) => {
 
           if (agentCode !== 'AS9V1V') {
             if (agentCommission > highestCommission) {
-              const agent = await Agent.findOne({ agentCode: agentCode })
+              const agent = await findDoc("agents", { agentCode: agentCode })
 
               highestCommission = agentCommission;
               highestCommissionAgent = {
@@ -300,7 +300,7 @@ exports.highestRecruitsAgent = async (req, res) => {
     const requestedMonth = req.params.month;
     const requestedMonthKey = `${requestedMonth}/${currentYear}`;
 
-    const agents = await Agent.find({ isApproved: true });
+    const agents = await findAgents({ approved: true });
     let highestRecruitAgentDetail = null;
     let overwriteAgents = [];
 
@@ -346,7 +346,7 @@ exports.highestRecruitsAgent = async (req, res) => {
     const highestRecruitAgentCode = findMostRecurringAgent(overwriteAgents);
 
     if (highestRecruitAgentCode) {
-      const highestRecruitAgent = await Agent.findOne({ agentCode: highestRecruitAgentCode })
+      const highestRecruitAgent = await findOneByAgentCode(highestRecruitAgentCode)
 
       highestRecruitAgentDetail = {
         agentTitle: highestRecruitAgent.agentTitle,
@@ -384,7 +384,7 @@ exports.TotalNoOfRecruits = async (req, res) => {
     // }
 
     let noOfRecruits = 0
-    const agents = await Agent.find({ isApproved: true })
+    const agents = await findAgents({ approved: true })
 
     agents.forEach(agent => {
       agentApprovalDate = new Date(agent.agentApprovalDate)
@@ -512,7 +512,7 @@ exports.getPreviousMonths = async (req, res) => {
 // exports.getMonthlyPolicyData_AgentView = async (req, res) => {
 //   try {
 //     const agentCode = req.user.agentCode;
-//     const policies = await Policies.find({
+//     const policies = await listDocs("policies", {
 //       $or: [
 //         { agentCode: agentCode },
 //         { overwrittingAgentCode1: agentCode },
@@ -611,7 +611,7 @@ exports.getPreviousMonths = async (req, res) => {
 exports.getMonthlyPolicyData_AgentView = async (req, res) => {
   try {
     const agentCode = req.user.agentCode;
-    const policies = await Policies.find({
+    const policies = await listDocs("policies", {
       $or: [
         { agentCode: agentCode },
         { overwrittingAgentCode1: agentCode },
@@ -693,8 +693,8 @@ exports.getYearlyMonthlyPolicyData_AgentView = async (req, res) => {
   try {
     // Retrieve policies from the database
     const agentCode = req.user.agentCode
-    // const policies = await Policies.find({agentCode:userId});
-    const policies = await Policies.find({
+    // const policies = await listDocs("policies", {agentCode:userId});
+    const policies = await listDocs("policies", {
       $or: [
         { agentCode: agentCode },
         { overwrittingAgentCode1: agentCode },

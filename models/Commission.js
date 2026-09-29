@@ -319,5 +319,5 @@ const CommissionSchema = new mongoose.Schema(
     }
 )
 
-const Commission = mongoose.model("Commission",CommissionSchema);
-module.exports = Commission;
+const { createModel } = require("../store");
+module.exports = createModel("commissions");

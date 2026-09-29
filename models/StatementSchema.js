@@ -162,5 +162,5 @@ const statementSchema = new mongoose.Schema({
 
 })
 
-const Statement = mongoose.model("Statement", statementSchema)
-module.exports = Statement;
+const { createModel } = require("../store");
+module.exports = createModel("statements");

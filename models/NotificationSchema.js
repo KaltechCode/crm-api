@@ -34,5 +34,5 @@ const notificationSchema = new mongoose.Schema({
     }
 })
 
-const Notification = mongoose.model("Notification",notificationSchema)
-module.exports = Notification
+const { createModel } = require("../store");
+module.exports = createModel("notifications");

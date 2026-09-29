@@ -96,6 +96,42 @@ function idFromToken(decode) {
   return decode || null;
 }
 
+async function findAgents({ approved, recruitingAgentCode, search } = {}) {
+  let query = supabase.from("agents").select("*");
+  if (approved === true) query = query.eq("is_approved", true);
+  if (recruitingAgentCode) {
+    query = query.eq("recruiting_agent_code", recruitingAgentCode);
+  }
+  if (search) {
+    const term = String(search).replace(/[%_,.()]/g, "");
+    if (term) {
+      query = query.or(
+        `first_name.ilike.%${term}%,agent_code.ilike.%${term}%,agent_title.ilike.%${term}%`
+      );
+    }
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map(agentToApi);
+}
+
+async function findOneByAgentCode(agentCode) {
+  if (!agentCode) return null;
+  const { data, error } = await supabase
+    .from("agents")
+    .select("*")
+    .eq("agent_code", agentCode)
+    .limit(1);
+  if (error) throw error;
+  return agentToApi(data && data[0]);
+}
+
+async function findAll(table) {
+  const { data, error } = await supabase.from(table).select("*");
+  if (error) throw error;
+  return (data || []).map(toApi[table]);
+}
+
 async function findByEmail(table, email) {
   const { data, error } = await supabase
     .from(table)
@@ -136,6 +172,14 @@ async function insertRow(table, row) {
   return toApi[table](data);
 }
 
+async function deleteById(table, id) {
+  const existing = await findById(table, id);
+  if (!existing) return null;
+  const { error } = await supabase.from(table).delete().eq("id", id);
+  if (error) throw error;
+  return existing;
+}
+
 async function updateById(table, id, changes) {
   if (!id) return null;
   const { data, error } = await supabase
@@ -152,9 +196,13 @@ module.exports = {
   newId,
   withoutPassword,
   idFromToken,
+  findAgents,
+  findOneByAgentCode,
+  findAll,
   findByEmail,
   findOneByEmail,
   findById,
   insertRow,
   updateById,
+  deleteById,
 };

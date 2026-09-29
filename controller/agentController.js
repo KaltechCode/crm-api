@@ -1,10 +1,39 @@
-const Recruits = require("../models/RecruiteSchema")
-const Agent = require("../models/AgentSchema")
-const Notification = require('../models/NotificationSchema')
-const Policy = require("../models/PoliciesSchema")
 const universal = require("./universal")
 var bcrypt = require("bcrypt");
 const emailModule = require('./email')
+const supabase = require("../db")
+const { fieldNameFromColumn } = require("../store")
+const {
+    findAgents,
+    findByEmail,
+    findOneByEmail,
+    findOneByAgentCode,
+    findById,
+    insertRow,
+    updateById,
+    deleteById,
+    newId,
+} = require("../rowMap")
+
+function toPolicy(row) {
+    const policy = {}
+    for (const [column, value] of Object.entries(row || {})) {
+        policy[fieldNameFromColumn(column)] = value
+    }
+    return policy
+}
+
+async function insertNotification(row) {
+    const { error } = await supabase.from("notifications").insert({
+        id: newId(),
+        unread: true,
+        new_policy: false,
+        new_agent: false,
+        status: 0,
+        ...row,
+    })
+    if (error) throw error
+}
 
 exports.addNewAgent = async (req, res) => {
     try {
@@ -29,7 +58,7 @@ exports.addNewAgent = async (req, res) => {
         let adminFirstName;
         let adminLastName;
         let adminCode;
-        const recruitingAgent = await Agent.findOne({ agentCode: recruitingAgentCode })
+        const recruitingAgent = await findOneByAgentCode(recruitingAgentCode)
 
         if (recruitingAgent) {
             recruitingAgentFirstName = recruitingAgent.firstName
@@ -44,7 +73,7 @@ exports.addNewAgent = async (req, res) => {
         let recruitmentDate = new Date();
         let formattedDate = `${recruitmentDate.getMonth() + 1}/${recruitmentDate.getDate()}/${recruitmentDate.getFullYear()}`;
 
-        const agentExists = await Agent.find({ email: email })
+        const agentExists = await findByEmail("agents", email)
 
         if (agentExists.length > 0) {
             return res.status(400).send({ "message": "User Already Exist" })
@@ -58,44 +87,37 @@ exports.addNewAgent = async (req, res) => {
             }
             else {
 
-                let registerAgent = new Agent({
-                    residentState: residentState,
+                const registerAgent = await insertRow("agents", {
+                    id: newId(),
+                    resident_state: residentState,
                     age: age,
-                    firstName: firstName,
-                    lastName: lastName,
-                    confirmEmail: confirmEmail,
-                    addressLine1: addressLine1,
+                    first_name: firstName,
+                    last_name: lastName,
+                    confirm_email: confirmEmail,
+                    address_line1: addressLine1,
                     city: city,
                     state: state,
-                    zipCode: zipCode,
-                    activeLicense: activeLicense,
-                    recruitmentDate: formattedDate,
+                    zip_code: zipCode,
+                    active_license: activeLicense,
+                    recruitment_date: formattedDate,
                     email: email,
-                    recruitingAgentCode: recruitingAgentCode,
+                    recruiting_agent_code: recruitingAgentCode || null,
+                    is_approved: false,
+                    active: true,
+                    verified: false,
+                    is_admin: false,
                 })
-                registerAgent.save()
 
-                let registerAgentId = registerAgent._id
-
-                if (recruitingAgentCode) {
-                    const result = await Agent.findOneAndUpdate({ agentCode: recruitingAgentCode },
-                        {
-                            $inc: { recruits: 1 }
-                        },
-                        {
-                            new: true,
-                            upsert: true,
-                        }
-
-                    )
-                    const newNotification = new Notification({
+                if (recruitingAgent) {
+                    await updateById("agents", recruitingAgent._id, {
+                        recruits: (Number(recruitingAgent.recruits) || 0) + 1,
+                    })
+                    await insertNotification({
                         source: "Agent",
-                        newAgent: true,
-                        agentCode: recruitingAgentCode,
-                        newAgentId: registerAgentId,
+                        new_agent: true,
+                        agent_code: recruitingAgentCode,
                         message: ` ${recruitingAgentFirstName} ${recruitingAgentLastName} recruited a new Agent on ${formattedDate}. Pending review & approval.`,
                     })
-                    newNotification.save()
                 }
                 else {
                     // const newNotification = new Notification({
@@ -172,47 +194,36 @@ exports.approveAgent = async (req, res) => {
     const agentCode = generateAgentCode(6);
     // console.log("agentCode",agentCode)
 
-    const result = await Agent.findByIdAndUpdate(id,
-        {
-            $set: {
-                agentApprovalDate: formattedAgentAprovalDate,
-                isApproved: true,
-                residentState: residentState,
-                age: age,
-                firstName: firstName,
-                lastName: lastName,
-                confirmEmail: confirmEmail,
-                addressLine1: addressLine1,
-                city: city,
-                state: state,
-                zipCode: zipCode,
-                activeLicense: activeLicense,
-                email: email,
-                recruitingAgentCode: recruitingAgentCode,
-                level: level,
-                agentTitle: agentTitle,
-                agentRole: agentRole,
-                agentCode: agentCode,
-                password: hashedPassword,
-            }
-        },
-        {
-            new: true,
-            upsert: true,
-        }
-
-    )
+    const result = await updateById("agents", id, {
+        agent_approval_date: formattedAgentAprovalDate,
+        is_approved: true,
+        resident_state: residentState,
+        age: age,
+        first_name: firstName,
+        last_name: lastName,
+        confirm_email: confirmEmail,
+        address_line1: addressLine1,
+        city: city,
+        state: state,
+        zip_code: zipCode,
+        active_license: activeLicense,
+        email: email,
+        recruiting_agent_code: recruitingAgentCode,
+        level: level,
+        agent_title: agentTitle,
+        agent_code: agentCode,
+        password: hashedPassword,
+    })
 
     if (result) {
         let emailResponse = await emailModule.sendCredentials(email, firstName, agentCode, password)
-        const newNotification = new Notification({
+        await insertNotification({
             source: "Admin",
-            newAgent: true,
-            agentCode: recruitingAgentCode,
+            new_agent: true,
+            agent_code: recruitingAgentCode,
             message: `JOptiman has Reviewed and Approved your Recruit ${firstName} ${lastName} on ${formattedAgentAprovalDate}.`,
         })
-        newNotification.save()
-        if ( newNotification) {
+        if (result) {
             res.status(200).send({ "message": "Agent Approved Successfully", data: result })
         }
       
@@ -224,20 +235,7 @@ exports.approveAgent = async (req, res) => {
 
 exports.getAllAgents = async (req, res) => {
     try {
-        let query = {};
-        if (req.query.search) {
-            const searchRegex = new RegExp(req.query.search, 'i');
-            
-            query = {
-                $or: [
-                    { firstName: { $regex: searchRegex } },
-                    { agentCode: { $regex: searchRegex } },
-                    { agentTitle: { $regex: searchRegex } },
-                    { agentRole: { $regex: searchRegex } },
-                ]
-            };
-        }
-        const allAgents = await Agent.find(query);
+        const allAgents = await findAgents({ search: req.query.search });
 
         if (!allAgents || allAgents.length === 0) {
             // res.status(400).send({ "message": "No agents found" });
@@ -266,29 +264,10 @@ exports.getAllAgents = async (req, res) => {
 
 exports.getApprovedAgents = async (req, res) => {
     try {
-        let query = {};
-        if (req.query.search) {
-            const searchRegex = new RegExp(req.query.search, 'i');
-
-            // Define conditions for search
-            query = {
-                $or: [
-                    { firstName: { $regex: searchRegex } },
-                    { agentCode: { $regex: searchRegex } },
-                    { agentTitle: { $regex: searchRegex } },
-                    { agentRole: { $regex: searchRegex } },
-                ]
-            };
-        }
-
-        const allAgents = await Agent.find(
-            {
-                $and: [
-                    { isApproved: true },
-                    query
-                ]
-            }
-        );
+        const allAgents = await findAgents({
+            approved: true,
+            search: req.query.search,
+        });
 
         if (!allAgents || allAgents.length === 0) {
             res.status(400).send({ "message": "No agents found" });
@@ -318,7 +297,7 @@ exports.getAgentByID = async (req, res) => {
     try {
         const agentID = req.params.id;
 
-        const agent = await Agent.findById(agentID); // Assuming you have an Agents model
+        const agent = await findById("agents", agentID);
 
         const sales = {
             Life: {
@@ -363,7 +342,12 @@ exports.getAgentByID = async (req, res) => {
             active: agent.active
         };
 
-        let policyDetails = await Policy.find({ agentCode: agent.agentCode })
+        const { data: policyRows, error: policyError } = await supabase
+            .from("policies")
+            .select("*")
+            .eq("agent_code", agent.agentCode)
+        if (policyError) throw policyError
+        let policyDetails = (policyRows || []).map(toPolicy)
 
         policyDetails = policyDetails.sort((a, b) => {
             const dateA = new Date(a.policySubmissionDate);
@@ -420,7 +404,7 @@ exports.deleteAgent = async (req, res) => {
         }
 
         for (const id of agentID) {
-            const deletedAgent = await Agent.findByIdAndDelete(id);
+            const deletedAgent = await deleteById("agents", id);
 
             agentEmails.push(deletedAgent.email)
             agentFirstNames.push(deletedAgent.firstName)
@@ -455,16 +439,7 @@ exports.deactivateAgent = async (req, res) => {
         }
 
         for (const id of agentID) {
-            const deletedAgent = await Agent.findByIdAndUpdate(id,
-                {
-                    $set: {
-                        active: false,
-                    }
-                },
-                {
-                    new: true
-                }
-            );
+            const deletedAgent = await updateById("agents", id, { active: false });
 
             agentEmails.push(deletedAgent.email)
             agentFirstNames.push(deletedAgent.firstName)
@@ -495,16 +470,7 @@ exports.activateAgent = async (req, res) => {
         }
 
         for (const id of agentID) {
-            const deletedAgent = await Agent.findByIdAndUpdate(id,
-                {
-                    $set: {
-                        active: true,
-                    }
-                },
-                {
-                    new: true
-                }
-            );
+            const deletedAgent = await updateById("agents", id, { active: true });
             agentEmails.push(deletedAgent.email);
             agentFirstName.push(deletedAgent.firstName);
 
@@ -533,39 +499,18 @@ exports.updateMyAccount = async (req, res) => {
         } = req.body;
 
 
-        if (password) {
-            var hashedPassword = await bcrypt.hash(password, 12)
-            var agent = await Agent.findOneAndUpdate(
-                { email: email },
-                {
-                    $set: {
-                        email: email,
-                        password: hashedPassword,
-                        profilePic: profilePic,
-                        phoneNumber: phoneNumber,
-                    }
-                },
-                {
-                    new: true,
-                    upsert: true,
-                }
-            )
-        }
-        else {
-            var agent = await Agent.findOneAndUpdate(
-                { email: email },
-                {
-                    $set: {
-                        email: email,
-                        profilePic: profilePic,
-                        phoneNumber: phoneNumber,
-                    }
-                },
-                {
-                    new: true,
-                    upsert: true,
-                }
-            )
+        const existing = await findOneByEmail("agents", email)
+        let agent = null
+        if (existing) {
+            const changes = {
+                email: email,
+                profile_pic: profilePic,
+                phone_number: phoneNumber,
+            }
+            if (password) {
+                changes.password = await bcrypt.hash(password, 12)
+            }
+            agent = await updateById("agents", existing._id, changes)
         }
 
 
@@ -590,21 +535,16 @@ exports.editAgent = async (req, res) => {
 
         const { firstName, lastName, level, agentTitle, agentRole, recruitmentDate, commissionEarned, recruits, email } = req.body
 
-        const agent = await Agent.findByIdAndUpdate(id,
-            {
-                $set: {
-                    firstName: firstName,
-                    lastName: lastName,
-                    level: level,
-                    agentTitle: agentTitle,
-                    agentRole: agentRole,
-                    recruitmentDate: recruitmentDate,
-                    recruits: recruits,
-                    commissionEarned: commissionEarned,
-                    email: email,
-                }
-            },
-            { upsert: true })
+        const agent = await updateById("agents", id, {
+            first_name: firstName,
+            last_name: lastName,
+            level: level,
+            agent_title: agentTitle,
+            recruitment_date: recruitmentDate,
+            recruits: recruits,
+            commission_earned: commissionEarned,
+            email: email,
+        })
 
         let emailResponse = await emailModule.promoteAgent(email, firstName, level)
         if (emailResponse) {
@@ -624,7 +564,7 @@ exports.editAgent = async (req, res) => {
 exports.getAllAgents_AgentView = async (req, res) => {
     try {
         const agentCode = req.user.agentCode
-        const allAgents = await Agent.find({ recruitingAgentCode: agentCode });
+        const allAgents = await findAgents({ recruitingAgentCode: agentCode });
 
         if (!allAgents || allAgents.length === 0) {
             // res.status(400).send({ "message": "No agents found" });

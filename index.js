@@ -13,7 +13,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const app = express();
 
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'https://portal.joptimanconsultancy.com');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
     "Access-Control-Allow-Methods",
@@ -33,9 +33,19 @@ app.use("/api/policies", policiesRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
 
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to the JOPTIMAN API" });
+});
+
 app.get("/api", (req, res) => {
   res.json({ message: "Welcome to the JOPTIMAN API" });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, console.log(`App is listening on port ${PORT}`));
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`App is listening on port ${PORT}`);
+  });
+}
