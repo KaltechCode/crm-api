@@ -13,7 +13,7 @@ npm install
 
 echo "Restarting Express server..."
 
-pm2 restart Crm-joptiman-api --update-env
+pm2 restart joptiman-crm-api --update-env
 
 pm2 save
 
