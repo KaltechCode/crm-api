@@ -10,7 +10,6 @@ const policiesRoutes = require("./routes/policiesRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const supportRoutes = require("./routes/supportRoutes");
-const supportController = require("./controller/supportController");
 
 const app = express();
 
@@ -35,8 +34,6 @@ app.use("/api/policies", policiesRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/support", supportRoutes);
-app.get("/support", supportController.renderTechnicalSupportForm);
-app.get("/forms/technical-support", supportController.renderTechnicalSupportForm);
 
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to the  JOPTIMAN CRM API " });

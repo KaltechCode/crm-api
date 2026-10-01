@@ -1,6 +1,5 @@
 const supabase = require("../db");
 const { sendTechnicalSupportEmails } = require("./email");
-const technicalSupportPage = require("../views/technicalSupportPage");
 
 const LIMITS = {
   firstName: 80,
@@ -54,10 +53,6 @@ function validate(body) {
 
   return { data, errors };
 }
-
-exports.renderTechnicalSupportForm = (req, res) => {
-  res.type("html").send(technicalSupportPage);
-};
 
 exports.submitTechnicalSupport = async (req, res) => {
   try {

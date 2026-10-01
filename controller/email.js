@@ -17,7 +17,7 @@ const logoBase64 = fs
 function logoAttachment() {
   return {
     content: logoBase64,
-    filename: "JOptimanlogo1.png",
+    filename: "JOptimanlogo.png",
     type: "image/png",
     disposition: "inline",
     content_id: "joptiman-logo",
