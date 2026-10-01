@@ -11,7 +11,7 @@ const ORANGE = "#f47b20";
 const TEXT = "#3a4354";
 const MUTED = "#6b7280";
 const logoBase64 = fs
-  .readFileSync(path.join(__dirname, "../views/JOptimanlogo1.png"))
+  .readFileSync(path.join(__dirname, "../views/JOptimanlogo.png"))
   .toString("base64");
 
 function logoAttachment() {
