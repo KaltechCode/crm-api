@@ -1896,7 +1896,7 @@ exports.getAllCommissions_AgentView = async (req, res) => {
         }
 
         if (req.query.search) {
-            const allCommissions = await listDocs("commissions", {
+            let allCommissions = await listDocs("commissions", {
                 $and: [
                     {
                         $or: [
@@ -2020,8 +2020,7 @@ exports.getAllCommissions_AgentView = async (req, res) => {
                     { split_2_OWAgent1_AgentCode: userId },
                     { split_2_OWAgent2_AgentCode: userId }
                 ],
-
-            }).sort({ policyApprovalDate: -1 });
+            }, { policyApprovalDate: -1 });
 
             allCommissions = allCommissions.sort((a, b) => {
                 const dateA = new Date(a.policyApprovalDate);
