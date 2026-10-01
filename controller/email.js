@@ -1,8 +1,112 @@
+const fs = require("fs");
+const path = require("path");
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY_CRM);
 
 const SUPPORT_INBOX = "support@joptiman.com";
 const MAIL_FROM = "admin@joptimanconsultancy.com";
+const NAVY = "#0b1744";
+const TEAL = "#1aa6c4";
+const ORANGE = "#f47b20";
+const TEXT = "#3a4354";
+const MUTED = "#6b7280";
+const logoBase64 = fs
+  .readFileSync(path.join(__dirname, "../views/JOptimanlogo1.png"))
+  .toString("base64");
+
+function logoAttachment() {
+  return {
+    content: logoBase64,
+    filename: "JOptimanlogo1.png",
+    type: "image/png",
+    disposition: "inline",
+    content_id: "joptiman-logo",
+  };
+}
+
+function renderBrandedEmail({ title, subtitle, bodyHtml, boxTitle, boxHtml, footerNote }) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef1f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f6;margin:0;padding:0;">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:${NAVY};height:8px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="background:${ORANGE};height:4px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td align="center" style="background:#ffffff;padding:28px 32px 4px;">
+              <img src="cid:joptiman-logo" width="220" alt="JOptiman Consultancy" style="display:block;width:220px;max-width:80%;height:auto;border:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:32px 40px 0;font-family:Arial,Helvetica,sans-serif;">
+              <h1 style="margin:0;color:${NAVY};font-size:26px;line-height:1.3;font-weight:700;">${title}</h1>
+              <p style="margin:10px 0 0;color:${MUTED};font-size:15px;line-height:1.5;">${subtitle}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px 8px;font-family:Arial,Helvetica,sans-serif;color:${TEXT};font-size:15px;line-height:1.65;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 40px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;border-radius:10px;">
+                <tr>
+                  <td style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;color:${TEXT};font-size:14px;line-height:1.6;">
+                    <p style="margin:0 0 6px;color:${NAVY};font-size:15px;font-weight:700;">${boxTitle}</p>
+                    ${boxHtml}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 40px;">
+              <div style="border-top:1px solid #e6e8ee;font-size:0;line-height:0;">&nbsp;</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px 40px 8px;font-family:Arial,Helvetica,sans-serif;color:${TEXT};font-size:15px;line-height:1.6;">
+              <p style="margin:0 0 8px;color:${NAVY};font-size:18px;font-weight:700;">Need help?</p>
+              <p style="margin:0 0 16px;">Our customer support team is here for you:</p>
+              <p style="margin:0 0 14px;">
+                <span style="display:block;color:${TEAL};font-size:12px;font-weight:700;letter-spacing:0.06em;">EMAIL</span>
+                <a href="mailto:${SUPPORT_INBOX}" style="color:${TEAL};text-decoration:underline;">${SUPPORT_INBOX}</a>
+              </p>
+              <p style="margin:0 0 14px;">
+                <span style="display:block;color:${TEAL};font-size:12px;font-weight:700;letter-spacing:0.06em;">PHONE</span>
+                <a href="tel:+18884917757" style="color:${TEXT};text-decoration:none;">+1 (888) 491-7757</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:18px 40px 28px;font-family:Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 12px;">
+                <a href="https://www.joptimanconsultancy.com" style="color:${TEAL};font-size:14px;font-weight:700;text-decoration:underline;">www.joptimanconsultancy.com</a>
+              </p>
+              <p style="margin:0 0 6px;color:${MUTED};font-size:12px;line-height:1.5;">© 2026 JOptiman Consultancy. All rights reserved.</p>
+              <p style="margin:0;color:${TEAL};font-size:12px;line-height:1.5;">675 Town Square Blvd. Suite 200, Garland, TX 75040</p>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:16px 0 0;max-width:600px;font-family:Arial,Helvetica,sans-serif;color:#9aa3b2;font-size:12px;line-height:1.5;">${footerNote}</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -46,27 +150,45 @@ exports.sendTechnicalSupportEmails = async (request) => {
     description: escapeHtml(request.description).replace(/\n/g, "<br />"),
   };
   const subject = String(request.subject || "Technical support request").replace(/[\r\n]+/g, " ");
+  const detailRows = [
+    ["Name", safe.name],
+    ["Email", safe.email],
+    ["Phone", safe.phone],
+    ["Agent code", safe.agentCode],
+    ["Subject", safe.subject],
+  ]
+    .map(
+      ([label, value]) =>
+        `<p style="margin:0 0 8px;"><span style="color:${TEAL};font-size:12px;font-weight:700;letter-spacing:0.04em;">${label.toUpperCase()}</span><br />${value}</p>`
+    )
+    .join("");
 
-  const supportHtml = `
-    <p>A new technical support request was submitted.</p>
-    <p><strong>Name:</strong> ${safe.name}<br />
-    <strong>Email:</strong> ${safe.email}<br />
-    <strong>Phone:</strong> ${safe.phone}<br />
-    <strong>Agent code:</strong> ${safe.agentCode}<br />
-    <strong>Subject:</strong> ${safe.subject}</p>
-    <p><strong>Problem</strong><br />${safe.description}</p>
-    <p>Reply to this email to respond directly to ${safe.email}.</p>
-  `;
+  const supportHtml = renderBrandedEmail({
+    title: "New support request",
+    subtitle: "A technical issue needs your attention",
+    bodyHtml: `
+      <p style="margin:0 0 14px;">Hello Support,</p>
+      <p style="margin:0 0 14px;">${safe.name || "An agent"} submitted a technical support request. Reply to this email to respond directly to ${safe.email}.</p>
+      <p style="margin:0;"><strong>Problem</strong><br />${safe.description}</p>
+    `,
+    boxTitle: "Request details",
+    boxHtml: detailRows,
+    footerNote: "You are receiving this because a technical support request was submitted to JOptiman Consultancy.",
+  });
 
-  const confirmationHtml = `
-    <p>Hello ${safe.name || "there"},</p>
-    <p>We received your technical support request and sent it to the Joptiman support team. Reply to this email if you need to add more detail.</p>
-    <p><strong>Subject:</strong> ${safe.subject}<br />
-    <strong>Agent code:</strong> ${safe.agentCode}<br />
-    <strong>Phone:</strong> ${safe.phone}</p>
-    <p><strong>Problem</strong><br />${safe.description}</p>
-    <p>Support: ${SUPPORT_INBOX}</p>
-  `;
+  const confirmationHtml = renderBrandedEmail({
+    title: "We received your request",
+    subtitle: "The JOptiman support team has been notified",
+    bodyHtml: `
+      <p style="margin:0 0 14px;">Hello ${safe.name || "there"},</p>
+      <p style="margin:0 0 14px;">We're glad you reached out. Your technical support request is with our team. Reply to this email if you need to add more detail.</p>
+      <p style="margin:0 0 14px;"><strong>Subject:</strong> ${safe.subject}</p>
+      <p style="margin:0;"><strong>Problem</strong><br />${safe.description}</p>
+    `,
+    boxTitle: "Not you?",
+    boxHtml: `<p style="margin:0;color:${MUTED};">If you did not submit this request, you can safely ignore this email — nothing further will happen.</p>`,
+    footerNote: "You are receiving this because you submitted a technical support request to JOptiman Consultancy.",
+  });
 
   const [supportEmailSent, submitterEmailSent] = await Promise.all([
     sendMail({
@@ -76,6 +198,7 @@ exports.sendTechnicalSupportEmails = async (request) => {
       subject: `Technical Support: ${subject}`,
       text: details,
       html: supportHtml,
+      attachments: [logoAttachment()],
     }),
     sendMail({
       to: request.email,
@@ -84,6 +207,7 @@ exports.sendTechnicalSupportEmails = async (request) => {
       subject: "We received your technical support request",
       text: `Hello ${name},\n\nWe received your technical support request.\n\n${details}\n\nYou can reply to this email to reach ${SUPPORT_INBOX}.`,
       html: confirmationHtml,
+      attachments: [logoAttachment()],
     }),
   ]);
 
